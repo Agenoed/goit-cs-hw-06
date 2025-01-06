@@ -1,26 +1,36 @@
 import socket
 import json
 from datetime import datetime
-import pymongo
+from pymongo import MongoClient
+import os
 
-HOST = "0.0.0.0" 
+HOST = "0.0.0.0"
 SOCKET_PORT = 5000
-MONGO_HOST = "mongodb" 
-MONGO_PORT = 27017
+MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")  # Default value changed to mongodb
+MONGO_DB = os.environ.get("MONGO_DB", "myFirstDatabase")
+MONGO_URI = f"mongodb://{MONGO_HOST}:27017/"  # Змінений URI
+
+# Створюємо директорію для логів, якщо її немає
+LOG_DIR = "/app/data"
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
+collection = db["messages"]
 
 def save_data_to_mongodb(data):
-    client = pymongo.MongoClient(MONGO_HOST, MONGO_PORT)
-    db = client["mydatabase"] 
-    collection = db["messages"] 
-    
     data_with_date = {
         "date": datetime.now().isoformat(),
         "username": data.get("username", ""),
         "message": data.get("message", "")
     }
-    collection.insert_one(data_with_date)
-    print(f"Data saved to MongoDB: {data_with_date}")
+    result = collection.insert_one(data_with_date)
+    log_message(f"Data saved to MongoDB: {data_with_date}, inserted ID: {result.inserted_id}")
 
+def log_message(message):
+    with open(os.path.join(LOG_DIR, "socket_server.log"), "a") as log_file:
+        log_file.write(f"{datetime.now().isoformat()} - {message}\n")
 
 def run_socket_server():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

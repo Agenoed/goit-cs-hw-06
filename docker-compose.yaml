@@ -1,4 +1,3 @@
-
 services:
   web:
     build:
@@ -22,7 +21,10 @@ services:
       - mongodb
     environment:
       - MONGO_HOST=mongodb
+      - MONGO_DB=myFirstDatabase
     command: ["python", "socket_server.py"]
+    volumes:
+      - socket_server_data:/app/data
 
   mongodb:
     image: mongo:4.4
@@ -30,3 +32,6 @@ services:
       - "27017:27017"
     volumes:
       - ./storage:/data/db
+
+volumes:
+  socket_server_data:
