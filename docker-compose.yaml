@@ -5,33 +5,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    depends_on:
-      - socket_server
     environment:
-      - SOCKET_HOST=socket_server
-    command: ["python", "main.py"]
-
-  socket_server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
+      - MONGO_URI=mongodb://mongodb:27017/myFirstDatabase 
+      - MONGO_DB=myFirstDatabase
+      - MONGO_HOST=mongodb
+      - MONGO_PORT=27017
     depends_on:
       - mongodb
-    environment:
-      - MONGO_HOST=mongodb
-      - MONGO_DB=myFirstDatabase
-    command: ["python", "socket_server.py"]
-    volumes:
-      - socket_server_data:/app/data
-
+    command: ["python", "main.py"]
   mongodb:
     image: mongo:4.4
     ports:
       - "27017:27017"
     volumes:
       - ./storage:/data/db
-
-volumes:
-  socket_server_data:

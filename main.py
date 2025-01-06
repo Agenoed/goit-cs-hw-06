@@ -5,11 +5,24 @@ import threading
 import json
 import urllib.parse
 from datetime import datetime
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+import os
 
 HOST = "0.0.0.0"
 HTTP_PORT = 3000
-SOCKET_HOST = "socket_server"
 SOCKET_PORT = 5000
+
+
+MONGO_HOST = os.environ.get("MONGO_HOST", "mongodb")
+MONGO_PORT = int(os.environ.get("MONGO_PORT", "27017")) 
+MONGO_DB = os.environ.get("MONGO_DB", "myFirstDatabase")
+MONGO_URI = f"mongodb://{MONGO_HOST}:{MONGO_PORT}/{MONGO_DB}"
+
+
+client = MongoClient(MONGO_URI) 
+db = client[MONGO_DB]
+collection = db["messages"]
 
 class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
@@ -35,7 +48,8 @@ class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             username = form_data.get("username", [""])[0]
             message = form_data.get("message", [""])[0]
 
-            send_data_to_socket_server(username, message)
+            
+            save_data_to_mongodb({"username": username, "message": message})
 
             self.send_response(303)
             self.send_header("Location", "/")
@@ -79,12 +93,14 @@ class HTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         except FileNotFoundError:
             self.send_error(404, "File not found")
 
-
-def send_data_to_socket_server(username, message):
-    data = {"username": username, "message": message}
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((SOCKET_HOST, SOCKET_PORT))
-        s.sendall(json.dumps(data).encode())
+def save_data_to_mongodb(data):
+    data_with_date = {
+        "date": datetime.now().isoformat(),
+        "username": data.get("username", ""),
+        "message": data.get("message", "")
+    }
+    result = collection.insert_one(data_with_date)
+    print(f"Data saved to MongoDB: {data_with_date}, inserted ID: {result.inserted_id}")
 
 def run_http_server():
     with socketserver.TCPServer((HOST, HTTP_PORT), HTTPRequestHandler) as httpd:
@@ -93,4 +109,8 @@ def run_http_server():
 
 if __name__ == "__main__":
     http_thread = threading.Thread(target=run_http_server)
+    http_thread.daemon = True  
     http_thread.start()
+
+    while True: 
+        pass
